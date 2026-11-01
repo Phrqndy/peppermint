@@ -1,14 +1,4 @@
 #!/usr/bin/env python3
-"""
-Peppermint - compiles PocketMine-MP.phar from a PocketMine-MP git repository
-(made for https://github.com/NetherGamesMC/PocketMine-MP, works with pmmp and other forks).
-
-Pipeline: git clone -> composer install --no-dev --classmap-authoritative
-          -> php -dphar.readonly=0 build/server-phar.php --out <file>
-
-Only the Python standard library is used. Needs git and a PocketMine PHP binary
-(the one in your server's bin/php folder is found automatically). Composer is downloaded if missing.
-"""
 from __future__ import annotations
 
 import argparse
@@ -53,7 +43,6 @@ def rgb(c: tuple[int, int, int]) -> str:
 
 
 def gradient(t: float) -> tuple[int, int, int]:
-    """Candy cane colour at position t (cyclic, t can be any float)."""
     pos = (t % 1.0) * STRIPES_TOTAL
     for i, (color, width) in enumerate(STRIPES):
         if pos < width:
@@ -125,7 +114,6 @@ def render_text(text: str) -> list[str]:
 
 
 def with_shadow(rows: list[str]) -> list[str]:
-    """Adds a 1-block drop shadow (down-right) drawn with a shade character."""
     h, w = len(rows) + 1, max(len(r) for r in rows) + 1
     grid = [[" "] * w for _ in range(h)]
     for y, row in enumerate(rows):
@@ -209,7 +197,6 @@ def confirm(label: str, default: bool = False) -> bool:
 
 
 def box(lines: list[str], color: str | None = None) -> None:
-    """A rounded box. Without a colour the border is a candy cane stripe."""
     w = max(visible_len(l) for l in lines) + 2
     paint_at = (lambda i: color) if color else (lambda i: rgb(gradient(i * 0.025)))
     edge = lambda chars, start: "".join(paint_at(start + i) + c for i, c in enumerate(chars))
@@ -234,7 +221,6 @@ class BuildError(Exception):
 
 
 class Task:
-    """One step on screen: an animated spinner while it runs, then a tick or a cross."""
 
     FRAMES = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
 
@@ -281,7 +267,6 @@ class Task:
 
 
 def run(cmd: list[str], task: Task, log, cwd: Path | None = None, env: dict[str, str] | None = None) -> None:
-    """Runs a command, streams its output into the log and the spinner's detail text."""
     log.write(f"\n$ {' '.join(cmd)}\n")
     log.flush()
     tail: deque[str] = deque(maxlen=18)
@@ -309,7 +294,6 @@ def run(cmd: list[str], task: Task, log, cwd: Path | None = None, env: dict[str,
 
 
 def parse_repo(link: str) -> tuple[str, str | None]:
-    """Accepts https URLs, github.com/owner/repo, owner/repo, .../tree/<branch> links, git@ URLs and local paths."""
     link = link.strip()
     if re.fullmatch(r"[\w.-]+/[\w.-]+", link) and not Path(link).exists():
         link = "https://github.com/" + link
@@ -359,7 +343,6 @@ def _ext_key(name: str) -> str:
 
 
 def missing_extensions(php: Path, workdir: Path) -> list[str]:
-    """PHP extensions the repo's composer.json / composer.lock ask for that this PHP doesn't have."""
     wanted: set[str] = set()
     try:
         wanted |= {k[4:] for k in json.loads((workdir / "composer.json").read_text("utf-8")).get("require", {}) if k.startswith("ext-")}
