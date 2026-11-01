@@ -36,7 +36,6 @@ WORK_DIR = HERE / ".work"
 LOG_DIR = HERE / "logs"
 BUILD_DIR = HERE / "builds"
 
-# ---------------------------------------------------------------- terminal / colours
 
 ESC = "\x1b["
 RESET, BOLD, DIM = ESC + "0m", ESC + "1m", ESC + "2m"
@@ -44,10 +43,9 @@ HIDE, SHOW, CLEAR_LINE = ESC + "?25l", ESC + "?25h", ESC + "K"
 ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 
 CANE_RED, CANE_WHITE, CANE_GREEN = (220, 30, 48), (250, 250, 250), (38, 166, 91)
-# candy cane: red/white stripes of equal width, with one thin mint-green stripe per cycle
 STRIPES = [(CANE_RED, 1.0), (CANE_WHITE, 1.0)] * 4 + [(CANE_RED, 1.0), (CANE_WHITE, 0.6), (CANE_GREEN, 0.4), (CANE_WHITE, 0.6)]
 STRIPES_TOTAL = sum(w for _, w in STRIPES)
-EDGE = 0.18  # part of a stripe that blends into the next one, so edges look smooth instead of jagged
+EDGE = 0.18
 
 
 def rgb(c: tuple[int, int, int]) -> str:
@@ -64,18 +62,17 @@ def gradient(t: float) -> tuple[int, int, int]:
                 return color
             nxt = STRIPES[(i + 1) % len(STRIPES)][0]
             k = (f - (1 - EDGE)) / EDGE
-            return tuple(int(color[j] + (nxt[j] - color[j]) * k) for j in range(3))  # type: ignore[return-value]
+            return tuple(int(color[j] + (nxt[j] - color[j]) * k) for j in range(3))
         pos -= width
     return STRIPES[-1][0]
 
 
 GREEN, RED, SNOW = rgb(CANE_GREEN), rgb(CANE_RED), rgb(CANE_WHITE)
-PINK = rgb((255, 150, 165))  # warnings: peppermint pink, clearly not the error red
+PINK = rgb((255, 150, 165))
 GREY = rgb((170, 160, 162))
-SHADOW = rgb((105, 18, 30))  # dark cherry under the logo
+SHADOW = rgb((105, 18, 30))
 ACCENT = RED
 
-# icons: plain Unicode symbols, none of them have an emoji form
 OK, FAIL, WARN, ARROW, DOT = "✓", "✗", "▲", "›", "•"
 
 
@@ -94,14 +91,12 @@ def term_width() -> int:
 
 def setup_terminal() -> None:
     if os.name == "nt":
-        os.system("")  # turns on ANSI escape processing in the classic Windows console
+        os.system("")
     try:
-        sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+        sys.stdout.reconfigure(encoding="utf-8")
     except (AttributeError, ValueError):
         pass
 
-
-# ---------------------------------------------------------------- animated banner
 
 FONT = {
     "P": ["████ ", "█   █", "████ ", "█    ", "█    "],
@@ -154,7 +149,6 @@ def paint(rows: list[str], phase: float, upto: int | None = None) -> str:
             elif ch == "░":
                 parts.append(SHADOW + ch + RESET)
             else:
-                # x + 2y makes the stripes diagonal (characters are about twice as tall as wide)
                 parts.append(rgb(gradient((x + y * 2) * 0.02 + phase)) + ch)
         lines.append("  " + "".join(parts) + RESET + CLEAR_LINE)
     return "\n".join(lines)
@@ -163,7 +157,7 @@ def paint(rows: list[str], phase: float, upto: int | None = None) -> str:
 def intro(animate: bool) -> None:
     rows = with_shadow(render_text("PEPPERMINT"))
     if max(len(r) for r in rows) + 4 > term_width():
-        rows = ["PEPPERMINT"]  # terminal too narrow for the big logo
+        rows = ["PEPPERMINT"]
     width = max(len(r) for r in rows)
     subtitle = "PocketMine-MP .phar compiler"
     out()
@@ -172,18 +166,15 @@ def intro(animate: bool) -> None:
         out("  " + SNOW + subtitle + RESET + "\n")
         return
     out(HIDE, end="")
-    # 1) reveal the logo left to right
     for col in range(0, width + 1, 2):
         out(paint(rows, col * 0.01, upto=col))
         out(f"{ESC}{len(rows)}A", end="")
         time.sleep(0.012)
-    # 2) roll the stripes along, like a turning candy cane
     for frame in range(50):
         out(paint(rows, 0.3 + frame * 0.012))
         out(f"{ESC}{len(rows)}A", end="")
         time.sleep(0.022)
     out(paint(rows, 0.3 + 50 * 0.012))
-    # 3) type the subtitle: white letters, red cursor
     out("  ", end="")
     for ch in subtitle:
         out(SNOW + ch + RED + "▌" + RESET + "\b", end="")
@@ -192,8 +183,6 @@ def intro(animate: bool) -> None:
     out("\n")
     out(SHOW, end="")
 
-
-# ---------------------------------------------------------------- UI pieces
 
 def rule(title: str) -> None:
     w = min(term_width() - 4, 78)
@@ -226,7 +215,6 @@ def box(lines: list[str], color: str | None = None) -> None:
     edge = lambda chars, start: "".join(paint_at(start + i) + c for i, c in enumerate(chars))
     out("  " + edge("╭" + "─" * w + "╮", 0) + RESET)
     for r, l in enumerate(lines, 1):
-        # sides use the row number twice so the stripes keep their diagonal going down the box
         out("  " + paint_at(r * 2) + "│" + RESET + " " + l + " " * (w - 1 - visible_len(l)) + paint_at(w + 1 + r * 2) + "│" + RESET)
     out("  " + edge("╰" + "─" * w + "╯", (len(lines) + 1) * 2) + RESET)
 
@@ -259,7 +247,7 @@ class Task:
 
     def __enter__(self) -> "Task":
         self.start = time.monotonic()
-        if sys.stdout.isatty():  # piped output (logs, CI) gets only the final line
+        if sys.stdout.isatty():
             out(HIDE, end="")
             self._thread = threading.Thread(target=self._spin, daemon=True)
             self._thread.start()
@@ -319,8 +307,6 @@ def run(cmd: list[str], task: Task, log, cwd: Path | None = None, env: dict[str,
     if code != 0:
         raise BuildError(f"{Path(cmd[0]).name} failed (exit {code})", list(tail))
 
-
-# ---------------------------------------------------------------- build steps
 
 def parse_repo(link: str) -> tuple[str, str | None]:
     """Accepts https URLs, github.com/owner/repo, owner/repo, .../tree/<branch> links, git@ URLs and local paths."""
@@ -429,7 +415,7 @@ def get_composer(task: Task, refresh: bool) -> Path:
 
 
 def force_rmtree(path: Path) -> None:
-    def make_writable(func, p, *_):  # git marks object files read-only on Windows
+    def make_writable(func, p, *_):
         os.chmod(p, stat.S_IWRITE)
         func(p)
     if sys.version_info >= (3, 12):
@@ -461,8 +447,6 @@ def backup(path: Path) -> Path | None:
     return bak
 
 
-# ---------------------------------------------------------------- main
-
 def main() -> int:
     ap = argparse.ArgumentParser(description="Compile PocketMine-MP.phar from a PocketMine-MP git repository.")
     ap.add_argument("--repo", help=f"repository link (default asks, suggestion: {DEFAULT_REPO})")
@@ -486,7 +470,6 @@ def main() -> int:
 
     with open(log_path, "w", encoding="utf-8") as log:
         try:
-            # ---- settings
             rule("SETUP")
             link = args.repo or (ask("Repository", DEFAULT_REPO) if interactive else DEFAULT_REPO)
             try:
@@ -517,7 +500,6 @@ def main() -> int:
                 return 0
             out()
 
-            # ---- build
             rule("BUILD")
             with Task("PHP") as t:
                 php = find_php(args.php)
@@ -543,10 +525,8 @@ def main() -> int:
             source_version = m.group(1) if m else None
 
             env = dict(os.environ, COMPOSER_NO_INTERACTION="1")
-            if os.environ.get("GITHUB_TOKEN") and "COMPOSER_AUTH" not in env:  # avoids GitHub's download rate limit
+            if os.environ.get("GITHUB_TOKEN") and "COMPOSER_AUTH" not in env:
                 env["COMPOSER_AUTH"] = json.dumps({"github-oauth": {"github.com": os.environ["GITHUB_TOKEN"]}})
-            # extensions are only needed to RUN the server, not to build the phar, so missing ones are skipped
-            # here and reported at the end
             missing = missing_extensions(php, workdir)
             with Task("Dependencies") as t:
                 run([str(php), str(composer), "install", "--no-dev", "--classmap-authoritative", "--prefer-dist",
@@ -565,7 +545,6 @@ def main() -> int:
                 if not meta:
                     raise BuildError("PHP can't open the .phar, it is broken")
 
-            # ---- summary
             out()
             rule("DONE")
             lines = [f"{GREEN}{BOLD}{OK}{RESET} {SNOW}{BOLD}Built in {time.monotonic() - started:.0f}s{RESET}", ""]
@@ -587,7 +566,6 @@ def main() -> int:
                 box([f"{PINK}{BOLD}{WARN} Missing PHP extension: {', '.join(missing)}{RESET}",
                      f"{GREY}Skipped for the build. Features that need it stay off on this PHP.{RESET}"], PINK)
 
-            # ---- optional: drop it into the server
             server_phar = next((p for p in (HERE.parent / "server" / "Pocketmine-MP.phar", HERE.parent / "server" / "PocketMine-MP.phar")
                                 if p.is_file()), None)
             if interactive and server_phar is not None and server_phar.resolve() != out_path:
