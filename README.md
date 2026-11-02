@@ -55,7 +55,6 @@ There is nothing else to install.
 python peppermint.py
 ```
 
-On Windows you can also double-click **`Peppermint.cmd`**.
 
 You will be asked for:
 
